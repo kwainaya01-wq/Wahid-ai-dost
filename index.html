@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wahid AI Pro - Final</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root { --bg: #212121; --sidebar: #171717; --text: #ececf1; }
+        html { zoom: 0.97; } 
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar Design */
+        #sidebar { 
+            position: absolute; left: -100%; width: 260px; height: 100%;
+            background: var(--sidebar); display: flex; flex-direction: column; 
+            padding: 10px; border-right: 1px solid #444; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 2000; 
+        }
+        #sidebar.open { left: 0; }
+        .close-sidebar { text-align: right; padding: 10px; cursor: pointer; color: #888; font-size: 20px; }
+        .new-chat { border: 1px solid #444; padding: 12px; border-radius: 5px; cursor: pointer; text-align: center; margin-top: 10px; font-weight: bold; }
+        #history-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; margin-top: 15px; }
+        .history-item { padding: 10px; border-radius: 5px; cursor: pointer; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .history-item:hover { background: #2d2d2d; }
+
+        /* Main Chat Area */
+        #main { flex: 1; display: flex; flex-direction: column; width: 100%; }
+        .header { padding: 8px 15px; background: #2d2d2d; display: flex; align-items: center; border-bottom: 1px solid #444; }
+        #chat-box { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 15px; }
+        
+        .msg { padding: 10px 15px; border-radius: 8px; max-width: 88%; line-height: 1.5; font-size: 14.5px; }
+        .user { background: #343541; align-self: flex-end; border: 1px solid #444; }
+        .ai { align-self: flex-start; width: 100%; border-bottom: 1px solid #333; padding-bottom: 15px; background: transparent; }
+        pre { background: #000; padding: 12px; border-radius: 8px; overflow-x: auto; color: #00ff00; font-size: 13px; }
+
+        /* Multi-line Input Area */
+        .input-area { padding: 12px; background: var(--bg); display: flex; gap: 10px; align-items: flex-end; border-top: 1px solid #444; }
+        textarea { 
+            flex: 1; background: #40414f; border: 1px solid #565869; color: white; 
+            padding: 10px; border-radius: 8px; outline: none; font-size: 14px; 
+            resize: none; max-height: 150px; font-family: sans-serif;
+        }
+        button#send { background: #10a37f; color: white; border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: bold; height: 40px; }
+        
+        #menu-btn { background: transparent; border: none; color: white; font-size: 22px; cursor: pointer; margin-right: 12px; }
+        #overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 1500; }
+        #overlay.show { display: block; }
+    </style>
+</head>
+<body>
+
+    <div id="overlay" onclick="toggleSidebar()"></div>
+
+    <div id="sidebar">
+        <div class="close-sidebar" onclick="toggleSidebar()">✕</div>
+        <div class="new-chat" onclick="createNewChat()">+ New Chat</div>
+        <div id="history-list"></div>
+    </div>
+
+    <div id="main">
+        <div class="header">
+            <button id="menu-btn" onclick="toggleSidebar()">☰</button>
+            <b style="font-size: 15px;">Wahid AI Digital Dost</b>
+        </div>
+        <div id="chat-box"></div>
+        <div class="input-area">
+            <label style="cursor:pointer; font-size: 18px; padding-bottom: 8px;">📷<input type="file" id="image-input" accept="image/*" style="display:none;" onchange="previewImage()"></label>
+            <textarea id="user-input" rows="1" placeholder="Kuch pucho dost..." oninput="autoHeight(this)"></textarea>
+            <button id="send" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = "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";
+        const MY_NAME = "MD Wahid";
+        let currentChatId = localStorage.getItem("last_chat_id") || Date.now().toString();
+        let allChats = JSON.parse(localStorage.getItem("wahid_all_chats")) || {};
+        let base64Image = "";
+        const todayDate = "Monday, April 20, 2026"; 
+
+        function toggleSidebar() { 
+            document.getElementById('sidebar').classList.toggle('open'); 
+            document.getElementById('overlay').classList.toggle('show'); 
+        }
+
+        // Textarea height auto adjust
+        function autoHeight(element) {
+            element.style.height = "auto";
+            element.style.height = (element.scrollHeight) + "px";
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('history-list');
+            list.innerHTML = "";
+            Object.keys(allChats).reverse().forEach(id => {
+                const chat = allChats[id];
+                const firstUserMsg = chat.find(m => m.role === 'user');
+                let title = firstUserMsg ? (typeof firstUserMsg.content === 'string' ? firstUserMsg.content : "Photo Chat") : "New Chat";
+                list.innerHTML += `<div class="history-item" onclick="loadChat('${id}')">${title}</div>`;
+            });
+        }
+
+        function createNewChat() {
+            currentChatId = Date.now().toString();
+            localStorage.setItem("last_chat_id", currentChatId);
+            displayChat();
+            toggleSidebar();
+        }
+
+        function loadChat(id) {
+            currentChatId = id;
+            localStorage.setItem("last_chat_id", currentChatId);
+            displayChat();
+            toggleSidebar();
+        }
+
+        function displayChat() {
+            const chatBox = document.getElementById('chat-box');
+            chatBox.innerHTML = "";
+            const history = allChats[currentChatId] || [];
+            history.forEach(msg => {
+                if(msg.role !== 'system') {
+                    const roleClass = msg.role === 'user' ? 'user' : 'ai';
+                    let text = Array.isArray(msg.content) ? msg.content[0].text : msg.content;
+                    chatBox.innerHTML += `<div class="msg ${roleClass}">${marked.parse(text)}</div>`;
+                }
+            });
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const chatBox = document.getElementById('chat-box');
+            const userVal = input.value.trim();
+            if(!userVal && !base64Image) return;
+
+            if(!allChats[currentChatId]) {
+                allChats[currentChatId] = [{ role: "system", content: `Aap ${MY_NAME} ke dost ho. Aaj ki date ${todayDate} hai.` }];
+            }
+            
+            const history = allChats[currentChatId];
+            chatBox.innerHTML += `<div class="msg user">${userVal || "Photo analysis..."}</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            if(base64Image) {
+                history.push({ role: "user", content: [{ type: "text", text: userVal || "Is photo ko dekho." }, { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } }]});
+            } else {
+                history.push({ role: "user", content: userVal });
+            }
+
+            const imgBuffer = base64Image;
+            input.value = ""; 
+            input.style.height = "auto"; // Reset height
+            base64Image = "";
+
+            try {
+                const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ model: imgBuffer ? "llama-3.2-90b-vision-preview" : "llama-3.3-70b-versatile", messages: history })
+                });
+                const data = await res.json();
+                const aiMsg = data.choices[0].message.content;
+                history.push({ role: "assistant", content: aiMsg });
+                allChats[currentChatId] = history;
+                localStorage.setItem("wahid_all_chats", JSON.stringify(allChats));
+                renderHistory();
+                chatBox.innerHTML += `<div class="msg ai">${marked.parse(aiMsg)}</div>`;
+            } catch (e) { chatBox.innerHTML += `<div class="msg ai">Dost, connection check karo!</div>`; }
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function previewImage() {
+            const file = document.getElementById('image-input').files[0];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let w = img.width; if(w > 600) { canvas.width = 600; canvas.height = img.height * (600/img.width); }
+                    else { canvas.width = img.width; canvas.height = img.height; }
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    base64Image = canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        window.onload = () => { renderHistory(); displayChat(); };
+    </script>
+</body>
+</html>
