@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Wahid Enterprises</title>
+  <style>
+    :root {
+      --primary: #1e3a8a;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --border: #cbd5e1;
+      --accent: #10b981;
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: #0f172a; padding: 16px; padding-bottom: 50px; }
+    header { background: var(--primary); color: white; padding: 16px; border-radius: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+    header h2 { font-size: 1.15rem; }
+    .btn-refresh { background: rgba(255,255,255,0.2); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+    
+    /* Login Lock */
+    #lockScreen { background: white; padding: 24px; border-radius: 12px; max-width: 400px; margin: 40px auto; border: 1px solid var(--border); text-align: center; }
+    #lockScreen input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; margin: 12px 0; font-size: 1rem; }
+    #lockScreen button { width: 100%; background: var(--primary); color: white; padding: 12px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+    
+    /* Dashboard Area */
+    #dashboard { display: none; max-width: 900px; margin: 0 auto; }
+    .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .stat-card { background: white; padding: 12px; border-radius: 8px; border: 1px solid var(--border); text-align: center; }
+    .stat-card strong { font-size: 1.25rem; color: var(--primary); display: block; }
+    .stat-card span { font-size: 0.75rem; color: #64748b; }
+    
+    /* Search & Filter Bar */
+    .search-filter-box { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 14px; }
+    .search-input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; margin-bottom: 10px; outline: none; }
+    .search-input:focus { border-color: var(--primary); }
+    .filter-tabs { display: flex; gap: 8px; }
+    .filter-btn { flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: #f8fafc; font-size: 0.8rem; font-weight: 600; cursor: pointer; color: #475569; }
+    .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+    .order-card { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+    .order-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 10px; }
+    .order-pnr { font-weight: 800; color: var(--primary); font-size: 1.05rem; }
+    .order-date { font-size: 0.75rem; color: #64748b; }
+    .order-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; margin-bottom: 12px; }
+    .order-grid div span { color: #64748b; display: block; font-size: 0.75rem; }
+    
+    .action-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .status-select { flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: #fff; min-width: 200px; font-weight: 500; }
+    .status-select optgroup { font-weight: 700; color: var(--primary); }
+    .btn-update { background: var(--accent); color: white; border: none; padding: 10px 16px; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 0.85rem; }
+    .btn-call { background: #0284c7; color: white; text-decoration: none; padding: 10px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; }
+    .btn-doc { background: #6366f1; color: white; border: none; padding: 10px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; }
+  </style>
+</head>
+<body>
+
+  <div id="lockScreen">
+    <h3>🔐 Wahid Enterprises Admin Access</h3>
+    <p style="font-size:0.8rem; color:#64748b; margin-top:4px;">Enter PIN to manage client PNR orders</p>
+    <input type="password" id="adminPin" placeholder="Enter Admin PIN">
+    <button type="button" onclick="verifyPin()">Unlock Dashboard</button>
+    <p id="loginError" style="color:var(--danger); font-size:0.8rem; margin-top:8px; display:none;">❌ Incorrect PIN</p>
+  </div>
+
+  <div id="dashboard">
+    <header>
+      <div>
+        <h2>Wahid Enterprises Admin</h2>
+        <p style="font-size:0.75rem; opacity:0.85;">Live Orders & Work Progression</p>
+      </div>
+      <button class="btn-refresh" onclick="fetchOrders()">🔄 Refresh</button>
+    </header>
+
+    <div class="stats-bar">
+      <div class="stat-card">
+        <strong id="totalOrders">0</strong>
+        <span>Total Orders</span>
+      </div>
+      <div class="stat-card">
+        <strong id="pendingOrders">0</strong>
+        <span>Active Work</span>
+      </div>
+    </div>
+
+    <!-- Live Search & Filter Controls -->
+    <div class="search-filter-box">
+      <input type="text" id="adminSearchInput" class="search-input" placeholder="🔍 Search by PNR, Customer Name, or Mobile..." oninput="filterAndRender()">
+      <div class="filter-tabs">
+        <button class="filter-btn active" id="filterAll" onclick="setFilter('all')">All</button>
+        <button class="filter-btn" id="filterActive" onclick="setFilter('active')">Active</button>
+        <button class="filter-btn" id="filterCompleted" onclick="setFilter('completed')">Completed</button>
+      </div>
+    </div>
+
+    <div id="ordersList">
+      <p style="text-align:center; color:#64748b;">Fetching cloud database...</p>
+    </div>
+  </div>
+
+  <!-- Document Viewer Modal -->
+  <div id="adminDocModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; flex-direction:column; padding:15px;">
+    <div style="width:100%; max-width:850px; background:#fff; border-radius:12px; overflow:hidden; display:flex; flex-direction:column; max-height:90vh;">
+      <div style="padding:12px 16px; background:#0f172a; color:#fff; display:flex; justify-content:space-between; align-items:center;">
+        <h3 id="docModalTitle" style="font-size:1rem; margin:0;">Customer Document</h3>
+        <button onclick="closeAdminDocModal()" style="background:none; border:none; color:#fff; font-size:1.5rem; cursor:pointer;">&times;</button>
+      </div>
+      
+      <div style="flex:1; overflow:auto; padding:15px; text-align:center; background:#f8fafc;" id="docModalBody">
+        <!-- Image ya PDF Render Hoga -->
+      </div>
+
+      <div style="padding:10px 16px; background:#e2e8f0; display:flex; justify-content:flex-end; gap:10px;">
+        <a id="downloadDocBtn" href="#" download="Document" style="background:#10b981; color:#fff; padding:8px 16px; border-radius:6px; text-decoration:none; font-weight:600; font-size:0.85rem;">⬇️ Download File</a>
+        <button onclick="closeAdminDocModal()" style="background:#64748b; color:#fff; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:600; font-size:0.85rem;">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var MASTER_PIN = "1234";
+    var DB_URL = "https://sarvice-e085a-default-rtdb.firebaseio.com/orders";
+    var allOrdersCache = [];
+    var currentFilterTab = "all";
+
+    function verifyPin() {
+      var pin = document.getElementById("adminPin").value.trim();
+      if (pin === MASTER_PIN) {
+        document.getElementById("lockScreen").style.display = "none";
+        document.getElementById("dashboard").style.display = "block";
+        fetchOrders();
+      } else {
+        document.getElementById("loginError").style.display = "block";
+      }
+    }
+
+    function setFilter(tab) {
+      currentFilterTab = tab;
+      document.querySelectorAll(".filter-btn").forEach(function(b){ b.classList.remove("active"); });
+      if (tab === "all") document.getElementById("filterAll").classList.add("active");
+      if (tab === "active") document.getElementById("filterActive").classList.add("active");
+      if (tab === "completed") document.getElementById("filterCompleted").classList.add("active");
+      filterAndRender();
+    }
+
+    function fetchOrders() {
+      var container = document.getElementById("ordersList");
+      container.innerHTML = "<p style='text-align:center; color:#64748b;'>Loading live records...</p>";
+
+      fetch(DB_URL + ".json")
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (!data) {
+            container.innerHTML = "<p style='text-align:center; color:#64748b;'>No orders found in database.</p>";
+            return;
+          }
+
+          var keys = Object.keys(data).reverse();
+          allOrdersCache = keys.map(function(k){ return data[k]; });
+
+          document.getElementById("totalOrders").innerText = allOrdersCache.length;
+          var pendingCount = allOrdersCache.filter(function(ord){
+            return !ord.status || (ord.status.indexOf("Completed") === -1 && ord.status.indexOf("Delivered") === -1);
+          }).length;
+          document.getElementById("pendingOrders").innerText = pendingCount;
+
+          filterAndRender();
+        })
+        .catch(function(err) {
+          container.innerHTML = "<p style='text-align:center; color:red;'>Database fetch error. Check connection.</p>";
+        });
+    }
+
+    function filterAndRender() {
+      var query = (document.getElementById("adminSearchInput").value || "").trim().toLowerCase();
+      var container = document.getElementById("ordersList");
+
+      var filtered = allOrdersCache.filter(function(ord) {
+        var isCompleted = ord.status && (ord.status.indexOf("Completed") !== -1 || ord.status.indexOf("Delivered") !== -1);
+        
+        if (currentFilterTab === "active" && isCompleted) return false;
+        if (currentFilterTab === "completed" && !isCompleted) return false;
+
+        if (query) {
+          var pnrMatch = (ord.pnr || "").toLowerCase().indexOf(query) !== -1;
+          var nameMatch = (ord.customer || "").toLowerCase().indexOf(query) !== -1;
+          var phoneMatch = (ord.phone || "").toLowerCase().indexOf(query) !== -1;
+          var serviceMatch = (ord.service || "").toLowerCase().indexOf(query) !== -1;
+          return pnrMatch || nameMatch || phoneMatch || serviceMatch;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = "<p style='text-align:center; color:#64748b; padding:20px;'>No matching orders found.</p>";
+        return;
+      }
+
+      container.innerHTML = filtered.map(function(ord) {
+        // Document button logic
+               // Document button logic
+        var docActionBtn = "";
+        if (ord.documents) {
+          docActionBtn = '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; width:100%;">' +
+            (ord.documents.aadhaar ? '<button class="btn-doc" onclick="previewDocDirect(\'' + ord.pnr + '\', \'aadhaar\', \'Aadhaar Card\')">🆔 Aadhaar</button>' : '') +
+            (ord.documents.ageProof ? '<button class="btn-doc" onclick="previewDocDirect(\'' + ord.pnr + '\', \'ageProof\', \'Age Proof\')">📅 Age Proof</button>' : '') +
+            (ord.documents.photo ? '<button class="btn-doc" onclick="previewDocDirect(\'' + ord.pnr + '\', \'photo\', \'Photo\')">👤 Photo</button>' : '') +
+            (ord.documents.sign ? '<button class="btn-doc" onclick="previewDocDirect(\'' + ord.pnr + '\', \'sign\', \'Signature\')">✍️ Sign</button>' : '') +
+          '</div>';
+        } else if (ord.documentData && ord.documentData !== "No document uploaded") {
+          docActionBtn = '<button class="btn-doc" onclick="previewDocDirect(\'' + ord.pnr + '\', \'legacy\', \'Document\')">📄 View Doc</button>';
+        } else {
+          docActionBtn = '<span style="font-size:0.75rem; color:#94a3b8; align-self:center; margin-top:6px;">No Doc</span>';
+        }
+
+
+        return '<div class="order-card" id="card_' + ord.pnr + '">' +
+          '<div class="order-header">' +
+            '<div class="order-pnr">' + ord.pnr + ' <span style="font-size:0.8rem; font-weight:normal; color:#475569;">(' + (ord.service || "Service") + ')</span></div>' +
+            '<div class="order-date">' + (ord.dateFormatted || "") + '</div>' +
+          '</div>' +
+          '<div class="order-grid">' +
+            '<div><span>Customer Name</span><strong>' + (ord.customer || "N/A") + '</strong></div>' +
+            '<div><span>Mobile</span><strong>' + (ord.phone || "N/A") + '</strong></div>' +
+            '<div><span>Paid / Total</span><strong>₹' + (ord.advance || 0) + ' / ₹' + (ord.totalPrice || ord.advance || 0) + '</strong></div>' +
+            '<div><span>Balance Due</span><strong id="bal_' + ord.pnr + '" style="color:' + (ord.balanceDue > 0 ? '#b91c1c' : '#15803d') + ';">₹' + (ord.balanceDue || 0) + '</strong></div>' +
+          '</div>' +
+          '<div class="action-row">' +
+            '<select class="status-select" id="status_' + ord.pnr + '">' +
+              '<option value="' + ord.status + '" selected>Current: ' + ord.status + '</option>' +
+              '<optgroup label="📱 App Development">' +
+                '<option value="In Development (UI & Coding Started)">In Development (UI & Coding Started)</option>' +
+                '<option value="Database & Backend Configuration">Database & Backend Configuration</option>' +
+                '<option value="Testing & APK Building">Testing & APK Building</option>' +
+                '<option value="Completed & Delivered (Final Code / APK)">Completed & Delivered (Final Code / APK)</option>' +
+              '</optgroup>' +
+              '<optgroup label="🪪 PAN Card Services">' +
+                '<option value="Documents Uploaded & Submitted (NSDL / UTI)">Documents Uploaded & Submitted (NSDL / UTI)</option>' +
+                '<option value="Verification & Processing at Income Tax Portal">Verification & Processing at Income Tax Portal</option>' +
+                '<option value="e-PAN Generated & Dispatched">e-PAN Generated & Dispatched</option>' +
+                '<option value="Completed & Delivered (Physical Card Posted)">Completed & Delivered (Physical Card Posted)</option>' +
+              '</optgroup>' +
+              '<optgroup label="🗳️ Voter ID Services">' +
+                '<option value="Form Submitted to Electoral Portal">Form Submitted to Electoral Portal</option>' +
+                '<option value="BLO Field Verification Underway">BLO Field Verification Underway</option>' +
+                '<option value="Voter ID Approved / Generated">Voter ID Approved / Generated</option>' +
+                '<option value="Completed & Delivered (e-EPIC Ready)">Completed & Delivered (e-EPIC Ready)</option>' +
+              '</optgroup>' +
+              '<optgroup label="💻 Other Digital & Printing">' +
+                '<option value="Registration / Form Submission in Progress">Registration / Form Submission in Progress</option>' +
+                '<option value="Print / Scan Document Ready for Pickup">Print / Scan Document Ready for Pickup</option>' +
+                '<option value="Completed & Delivered (Final Slip Handed Over)">Completed & Delivered (Final Slip Handed Over)</option>' +
+              '</optgroup>' +
+            '</select>' +
+            '<button class="btn-update" onclick="updateOrderStatus(\'' + ord.pnr + '\')">Save</button>' +
+            '<a class="btn-call" href="tel:' + ord.phone + '">📞 Call</a>' +
+            docActionBtn +
+          '</div>' +
+        '</div>';
+      }).join("");
+    }
+
+    function updateOrderStatus(pnr) {
+      var selectEl = document.getElementById("status_" + pnr);
+      var newStatus = selectEl.value;
+      var btn = event.target;
+      btn.innerText = "Saving...";
+      btn.disabled = true;
+
+      var updatePayload = { status: newStatus };
+      if (newStatus.indexOf("Completed") !== -1 || newStatus.indexOf("Delivered") !== -1) {
+        updatePayload.balanceDue = 0;
+      }
+
+      fetch(DB_URL + "/" + pnr + ".json", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatePayload)
+      })
+      .then(function() {
+        btn.innerText = "Updated ✅";
+        for (var i = 0; i < allOrdersCache.length; i++) {
+          if (allOrdersCache[i].pnr === pnr) {
+            allOrdersCache[i].status = newStatus;
+            if (updatePayload.balanceDue === 0) allOrdersCache[i].balanceDue = 0;
+            break;
+          }
+        }
+        var pendingCount = allOrdersCache.filter(function(ord){
+          return !ord.status || (ord.status.indexOf("Completed") === -1 && ord.status.indexOf("Delivered") === -1);
+        }).length;
+        document.getElementById("pendingOrders").innerText = pendingCount;
+
+        setTimeout(function() {
+          btn.innerText = "Save";
+          btn.disabled = false;
+        }, 1500);
+      })
+      .catch(function() {
+        alert("Failed to update status.");
+        btn.innerText = "Save";
+        btn.disabled = false;
+      });
+    }
+
+    // Modal Document Preview Functions
+        function previewDocDirect(pnr, docKey, docTitle) {
+      var modal = document.getElementById("adminDocModal");
+      var body = document.getElementById("docModalBody");
+      var title = document.getElementById("docModalTitle");
+      var dwnBtn = document.getElementById("downloadDocBtn");
+
+      body.innerHTML = "<p style='color:#64748b;'>Opening " + docTitle + "...</p>";
+      modal.style.display = "flex";
+
+      var selectedOrder = allOrdersCache.find(function(item){ return item.pnr === pnr; });
+
+      if (!selectedOrder) {
+        body.innerHTML = "<p style='color:#ef4444;'>Order not found.</p>";
+        dwnBtn.style.display = "none";
+        return;
+      }
+
+      var fileData = null;
+      if (docKey === "legacy") {
+        fileData = selectedOrder.documentData;
+      } else if (selectedOrder.documents && selectedOrder.documents[docKey]) {
+        fileData = selectedOrder.documents[docKey];
+      }
+
+      if (!fileData || fileData === "No document uploaded") {
+        body.innerHTML = "<p style='color:#ef4444; font-weight:600;'>❌ " + docTitle + " not available.</p>";
+        dwnBtn.style.display = "none";
+        return;
+      }
+
+      title.innerText = docTitle + " - " + selectedOrder.pnr + " (" + selectedOrder.customer + ")";
+      dwnBtn.style.display = "inline-block";
+      dwnBtn.href = fileData;
+
+      if (fileData.indexOf("data:application/pdf") !== -1) {
+        dwnBtn.download = selectedOrder.pnr + "_" + docKey + ".pdf";
+        body.innerHTML = '<iframe src="' + fileData + '" style="width:100%; height:70vh; border:none; border-radius:8px;"></iframe>';
+      } else {
+        dwnBtn.download = selectedOrder.pnr + "_" + docKey + ".jpg";
+        body.innerHTML = '<img src="' + fileData + '" style="max-width:100%; max-height:70vh; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);" alt="Doc"/>';
+      }
+    }
+
+
+    function closeAdminDocModal() {
+      document.getElementById("adminDocModal").style.display = "none";
+    }
+  </script>
+</body>
+</html>
